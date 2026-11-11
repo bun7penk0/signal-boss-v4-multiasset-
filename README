@@ -1,0 +1,34 @@
+SIGNAL BOSS V4 Multi-Asset Test
+ทดสอบกลยุทธ์เดียวกันกับ 3 ตลาด: Crypto / หุ้น US / หุ้นไทย SET
+
+สถานะ
+Paper Test เท่านั้น
+ไม่ Auto Trade
+ไม่ส่งคำสั่งซื้อขายจริง
+ไม่ใช้ API Key
+ข้อมูลหุ้น US / ไทย อาจ Delayed
+วิธีใช้
+เปิดเว็บ signal-boss-v4-multiasset.vercel.app
+กด RUN ทดสอบ 3 ตลาดพร้อมกัน
+ดูตารางสรุปว่าตลาดไหนขาดทุน / ตัวไหนขาดทุน (Win Rate < 50%)
+บันทึก Outcome +1h / +4h / +24h ในกล่องใต้การ์ดเหรียญ
+Whitelist ทดสอบ
+Crypto: BTC (BTC-USD)
+US: AAPL / MSFT / NVDA / TSLA
+TH SET: PTT / AOT / CPALL / ADVANC / DELTA
+กติกา Paper Test
+พอร์ต Paper: 1000 USDT (หรือ 1000 หน่วยตามตลาด)
+เสี่ยง: 1% ต่อรอบ
+ต้องครบ 20 รอบ ถึงจะประเมิน Win Rate ได้
+Win Rate < 40% = หยุด อย่าเอาเงินจริงเข้า
+NO COMMAND = NO CHANGE
+NO EVIDENCE = NO PASS
+โครงสร้าง Repo
+index.html = ไฟล์หลัก V4
+vercel.json = ตั้งค่า Deploy
+docs/PIPELINE.md = Pipeline 5 ขั้น / 11 หมวด
+docs/AUDIT.md = ผล Audit + วิธีแก้ 3 WARNING
+docs/PAPER-TEST.md = กติกา Paper Test + เกณฑ์เลือก Top Movers
+คำเตือน
+Backtest / Paper Test ไม่ใช่การันตีกำไร หุ้นไทยเปิด 10:00-16:30 หุ้น US เปิด 21:30-04:00 เวลาไทย
+
