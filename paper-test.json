@@ -1,0 +1,13 @@
+{
+  "rounds": [],
+  "note": "บันทึกผล +1h / +4h / +24h ทีละรอบ ครบ 20 รอบถึงประเมิน Win Rate ได้",
+  "example": {
+    "round": 1,
+    "asset": "BTC",
+    "decision": "LONG BIAS",
+    "entry": 65000,
+    "exit24h": 65500,
+    "result": "WIN",
+    "pnlPct": 0.77
+  }
+}
