@@ -1,0 +1,68 @@
+{
+  "crypto": [
+    {
+      "symbol": "BTC-USD",
+      "name": "BTC",
+      "market": "CRYPTO",
+      "ccy": "$"
+    }
+  ],
+  "us": [
+    {
+      "symbol": "AAPL",
+      "name": "Apple",
+      "market": "US",
+      "ccy": "$"
+    },
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft",
+      "market": "US",
+      "ccy": "$"
+    },
+    {
+      "symbol": "NVDA",
+      "name": "Nvidia",
+      "market": "US",
+      "ccy": "$"
+    },
+    {
+      "symbol": "TSLA",
+      "name": "Tesla",
+      "market": "US",
+      "ccy": "$"
+    }
+  ],
+  "th": [
+    {
+      "symbol": "PTT.BK",
+      "name": "PTT",
+      "market": "TH",
+      "ccy": "฿"
+    },
+    {
+      "symbol": "AOT.BK",
+      "name": "AOT",
+      "market": "TH",
+      "ccy": "฿"
+    },
+    {
+      "symbol": "CPALL.BK",
+      "name": "CPALL",
+      "market": "TH",
+      "ccy": "฿"
+    },
+    {
+      "symbol": "ADVANC.BK",
+      "name": "ADVANC",
+      "market": "TH",
+      "ccy": "฿"
+    },
+    {
+      "symbol": "DELTA.BK",
+      "name": "DELTA",
+      "market": "TH",
+      "ccy": "฿"
+    }
+  ]
+}
