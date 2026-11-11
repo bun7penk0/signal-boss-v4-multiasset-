@@ -25,8 +25,9 @@ function backtest(kl){
 async function runAll(){
   document.getElementById('status').innerHTML='⏳ กำลังโหลด config.json + whitelist.json + ดึงข้อมูลจริง 3 ตลาด...';
   try{
-    CONFIG=await loadJSON('data/config.json');
-    const wl=await loadJSON('data/whitelist.json');
+    CONFIG=await loadJSON('config.json');
+const wl=await loadJSON('whitelist.json');
+
     ASSETS=[...wl.crypto,...wl.us,...wl.th];
   }catch(e){logErr('JSON FAIL','โหลด data/*.json ไม่ได้ - '+e.message);document.getElementById('status').innerHTML='❌ โหลด JSON ไม่ได้ ตรวจว่าไฟล์อยู่ในโฟลเดอร์ data/ ครบ';return;}
   let rows=[];
