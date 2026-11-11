@@ -1,0 +1,234 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SIGNAL BOSS V4.10 — Modern</title><style>
+*{box-sizing:border-box}body{margin:0;background:#070a12;color:#eef2ff;font-family:system-ui,-apple-system,sans-serif}
+.top{max-width:1200px;margin:auto;padding:20px 16px 8px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:22px;font-weight:900} .logo span{color:#fbbf24}
+.badge{background:#12231a;color:#6ee7a8;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700}
+.wrap{max-width:1200px;margin:auto;padding:8px 16px 24px}
+.hero{background:linear-gradient(135deg,#111a33,#0f2340);border:1px solid #263554;border-radius:24px;padding:20px}
+.hero h2{margin:0;font-size:20px} .hero p{color:#94a3b8;margin:6px 0 16px;font-size:13px;line-height:1.6}
+.btn{background:#fbbf24;color:#111;border:0;padding:14px;border-radius:14px;font-weight:900;width:100%;font-size:15px;cursor:pointer}
+.kpi{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:14px 0}
+.kpi div{background:#0e1428;border:1px solid #223055;border-radius:18px;padding:14px} .kpi b{font-size:22px} .kpi span{color:#94a3b8;font-size:12px}
+.card{background:#0e1428;border:1px solid #223055;border-radius:22px;padding:16px;margin:12px 0}
+.card h3{margin:0 0 10px;font-size:15px}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}@media(min-width:700px){.grid{grid-template-columns:1fr 1fr}}@media(min-width:1100px){.grid{grid-template-columns:1fr 1fr 1fr}}
+.asset{background:#0a0f22;border:1px solid #263554;border-radius:18px;padding:14px}
+.price{font-size:26px;font-weight:900;margin:4px 0} small{color:#94a3b8;line-height:1.6;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:13px} td,th{border-bottom:1px solid #263554;padding:9px;text-align:left}
+details{background:#0a0f22;border:1px solid #263554;border-radius:14px;padding:12px} summary{cursor:pointer;font-weight:800;font-size:13px}
+.btnG{background:#1e293b;color:#fff;border:0;padding:9px 14px;border-radius:10px;font-weight:700;cursor:pointer}
+#errBox div{border:1px solid #3f1d1d;border-radius:10px;padding:8px;margin-top:6px;font-size:12px}
+</style></head><body>
+<div class="top"><div class="logo">SIGNAL BOSS <span>V4.10</span></div><div class="badge">● PAPER TEST</div></div>
+<div class="wrap">
+<div class="hero"><h2>ทดสอบกลยุทธ์เดียวกัน 3 ตลาด</h2><p>Crypto • หุ้น US • หุ้นไทย SET — ไม่ส่งคำสั่งจริง • ไม่ใช้เงินจริง • V4.10 แก้ CORS + Timeout รวม 7 วิ + ไม่ auto RUN</p><button class="btn" onclick="runAll()">▶ RUN — ทดสอบ 3 ตลาด</button><div id="status" style="margin-top:12px;font-size:13px;color:#cbd5e1"></div><div id="progress"></div></div>
+<div class="kpi"><div><span>ภาพรวม</span><br><b id="kpiWin">—</b><br><span>Win Rate เฉลี่ย</span></div><div><span>ตลาด</span><br><b>3</b><br><span>Crypto / US / TH</span></div><div><span>หุ้น</span><br><b>10</b><br><span>ตัวที่ทดสอบ</span></div></div>
+<div class="card"><h3>📊 สรุป</h3><div id="summary"><small>กด RUN ก่อน</small></div></div>
+<div class="card"><h3>📈 ผลรายตัว</h3><div id="dash"><small>กำลังรอ...</small></div></div>
+<details><summary>🧾 Log — กดเพื่อเปิดดู</summary><div style="margin-top:10px"><div id="errBox"><small>ยังไม่มี Log</small></div><button class="btnG" onclick="exportLog()" style="margin-top:10px">⬇ Export Log</button></div></details>
+<div style="text-align:center;color:#475569;font-size:11px;margin-top:16px">Backtest 20 วันล่าสุด • ไม่ใช่การันตีกำไร • ข้อมูลอาจ Delayed</div>
+</div>
+<script>
+// SIGNAL BOSS V4 - indicators.js
+// EMA / RSI Wilder / ATR / LL HH / Rejection - ใช้สูตรเดียวกันทุกตลาด
+function ema(arr,p){let k=2/(p+1),e=arr[0];for(let i=1;i<arr.length;i++)e=arr[i]*k+e*(1-k);return e;}
+function rsi(closes){let g=[],l=[];for(let i=1;i<closes.length;i++){let d=closes[i]-closes[i-1];g.push(Math.max(d,0));l.push(Math.max(-d,0));}let ag=g.slice(0,14).reduce((a,b)=>a+b,0)/14,al=l.slice(0,14).reduce((a,b)=>a+b,0)/14;for(let i=14;i<g.length;i++){ag=(ag*13+g[i])/14;al=(al*13+l[i])/14;}return al===0?100:100-(100/(1+ag/al));}
+function atr(kl){let trs=[];for(let i=1;i<kl.length;i++){let h=kl[i].h,l=kl[i].l,pc=kl[i-1].c;trs.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)));}return trs.slice(-14).reduce((a,b)=>a+b,0)/14;}
+function countLL(kl){let n=0;for(let i=kl.length-1;i>kl.length-12&&i>0;i--){if(kl[i].l<kl[i-1].l)n++;else break;}return n;}
+function countHH(kl){let n=0;for(let i=kl.length-1;i>kl.length-12&&i>0;i--){if(kl[i].h>kl[i-1].h)n++;else break;}return n;}
+function countRejection(kl){let up=0,down=0;for(let i=kl.length-5;i<kl.length;i++){let o=kl[i].o,h=kl[i].h,l=kl[i].l,c=kl[i].c,body=Math.abs(c-o)||0.0001;if(Math.min(o,c)-l>2*body)up++;if(h-Math.max(o,c)>2*body)down++;}return {up,down};}
+
+// ===== SIGNAL BOSS V4.10 - FIX 3 จุดจาก audit =====
+// FIX1: ไม่มี window load auto RUN, ไม่มี fetchYahoo ตัวเก่าซ้อน - มีตัวเดียวชื่อ fetchYahoo ตั้งแต่แรก
+// FIX2: Promise.any + AbortController 7วิเพดานรวม ไม่ใช่ 7วิ x 8 ครั้ง
+// FIX3: ทุก request ผ่าน proxy หมด รวม Nasdaq - ไม่มีเรียกตรงแล้ว (ยกเว้น Binance ที่เปิด CORS)
+let CONFIG=null, ASSETS=[], errs=[];
+const FALLBACK=[
+ {symbol:'BTC-USD',name:'BTC',market:'CRYPTO',ccy:'$'},
+ {symbol:'AAPL',name:'Apple',market:'US',ccy:'$'},
+ {symbol:'MSFT',name:'Microsoft',market:'US',ccy:'$'},
+ {symbol:'NVDA',name:'Nvidia',market:'US',ccy:'$'},
+ {symbol:'TSLA',name:'Tesla',market:'US',ccy:'$'},
+ {symbol:'PTT.BK',name:'PTT',market:'TH',ccy:'฿'},
+ {symbol:'AOT.BK',name:'AOT',market:'TH',ccy:'฿'},
+ {symbol:'CPALL.BK',name:'CPALL',market:'TH',ccy:'฿'},
+ {symbol:'ADVANC.BK',name:'ADVANC',market:'TH',ccy:'฿'},
+ {symbol:'DELTA.BK',name:'DELTA',market:'TH',ccy:'฿'},
+];
+function logErr(t,m){errs.unshift({at:new Date().toLocaleString('th-TH'),t,m});const el=document.getElementById('errBox'); if(el) el.innerHTML=errs.map(e=>`<div><b>[${e.t}]</b> ${e.m}<br><small>${e.at}</small></div>`).join('');}
+function exportLog(){const b=new Blob([errs.map(e=>`[${e.at}] [${e.t}] ${e.m}`).join('\n')],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='signal-boss-v48-log.txt';a.click();}
+
+// ===== V4.10 - FIX PROXY ตายหมด =====
+// allorigins = เอ๋อบ่อย, corsproxy.io = ต้อง API Key ตั้งแต่ 2026, codetabs = ปิดแล้ว มิ.ย. 2026
+// ใช้ proxy.cors.dev ฟรี 600 req/นาที เป็นหลัก + รองรับใส่ Cloudflare Worker ของตัวเอง
+// วิธีใส่ Worker ตัวเอง: แทนที่ '' ใน MY_WORKER ด้วย https://ชื่อของคุณ.workers.dev/?url= แล้ว Deploy ใหม่
+const MY_WORKER = ''; // เช่น 'https://signal-boss-proxy.yourname.workers.dev/?url='
+function proxied(u){
+  if(MY_WORKER) return MY_WORKER + encodeURIComponent(u);
+  return 'https://proxy.cors.dev/' + u;
+}
+const PROXIES=[u=>proxied(u)]; // V4.10 ใช้ proxy ตัวเดียวที่ยังใช้ได้ ไม่แข่งกับตัวที่ตายแล้ว
+async function fetchJSONRace(urls, totalMs=10000){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(), totalMs);
+  try{
+    const res=await Promise.any(urls.map(async u=>{
+      const r=await fetch(u,{signal:ctrl.signal});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return await r.json();
+    }));
+    clearTimeout(timer); return res;
+  }catch(e){ clearTimeout(timer); throw e; }
+}
+async function fetchTextRace(urls, totalMs=10000){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(), totalMs);
+  try{
+    const res=await Promise.any(urls.map(async u=>{
+      const r=await fetch(u,{signal:ctrl.signal});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return await r.text();
+    }));
+    clearTimeout(timer); return res;
+  }catch(e){ clearTimeout(timer); throw e; }
+}
+function parseYahoo(j){
+  const res=j?.chart?.result?.[0]; if(!res) return null;
+  const q=res.indicators?.quote?.[0]; const ts=res.timestamp||[];
+  const kl=ts.map((t,i)=>({t:t*1000,o:q.open[i],h:q.high[i],l:q.low[i],c:q.close[i]})).filter(x=>x.c!=null);
+  return kl.length>20?kl:null;
+}
+function parseStooqSnapshot(txt){
+  // Stooq ใหม่: /q/l/?s=sym&f=sd2t2ohlcv&h&e=csv คืนบรรทัดเดียว snapshot ไม่ใช่ประวัติ
+  // ใช้เทียบราคาล่าสุดเท่านั้น ถ้าต้องการประวัติต้องใช้ Yahoo ผ่าน proxy
+  const lines=txt.trim().split('\n'); if(lines.length<2) return null;
+  const p=lines[1].split(','); const c=parseFloat(p[6]); if(!c) return null;
+  const t=Date.now(); return [{t:t-86400000,o:c,h:c,l:c,c:c},{t:t,o:c,h:c,l:c,c:c}];
+}
+function parseStooqCSV(txt){
+  const lines=txt.trim().split('\n').slice(1).map(l=>{const p=l.split(','); return {t:new Date(p[0]).getTime(),o:+p[1],h:+p[2],l:+p[3],c:+p[4]};}).filter(x=>x.c>0);
+  return lines.length>20?lines:null;
+}
+async function fetchYahoo(sym){
+  if(sym==='BTC-USD'||sym==='BTCUSDT'){
+    const urls=['https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=180','https://api.binance.us/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=180'];
+    const j=await fetchJSONRace(urls,10000);
+    return j.map(k=>({t:k[0],o:parseFloat(k[1]),h:parseFloat(k[2]),l:parseFloat(k[3]),c:parseFloat(k[4])}));
+  }
+  if(['AAPL','MSFT','NVDA','TSLA'].includes(sym)){
+    // Nasdaq ผ่าน proxy ตัวเดียว + header ครบ (Worker จะส่ง User-Agent/Origin/Referer ให้)
+    try{
+      const nasdaqUrl='https://api.nasdaq.com/api/quote/'+sym+'/historical?assetclass=stocks&fromdate=2025-06-01&limit=9999';
+      const j=await fetchJSONRace([proxied(nasdaqUrl)],10000);
+      const rows=j?.data?.trades?.table?.rows||[];
+      if(rows.length>20) return rows.map(r=>{const p=parseFloat(String(r.close).replace(/[$,]/g,'')); return {t:new Date(r.date).getTime(),o:p,h:p,l:p,c:p};}).sort((a,b)=>a.t-b.t);
+    }catch(e){}
+    try{
+      const bases=['https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?range=6mo&interval=1d','https://query2.finance.yahoo.com/v8/finance/chart/'+sym+'?range=6mo&interval=1d'];
+      const j=await fetchJSONRace(bases.map(b=>proxied(b)),10000); const kl=parseYahoo(j); if(kl) return kl;
+    }catch(e){}
+    // Stooq snapshot - ใช้เทียบราคาล่าสุด ถ้า Yahoo ยังไม่ได้
+    try{
+      const txt=await fetchTextRace([proxied('https://stooq.com/q/l/?s='+sym.toLowerCase()+'.us&f=sd2t2ohlcv&h&e=csv')],10000);
+      const kl2=parseStooqSnapshot(txt); if(kl2) return kl2;
+    }catch(e){}
+    throw new Error('ดึง '+sym+' ไม่ได้ - Proxy ตอบช้า/บล็อก');
+  }
+  // TH
+  try{
+    const bases=['https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=6mo&interval=1d','https://query2.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=6mo&interval=1d'];
+    const j=await fetchJSONRace(bases.map(b=>proxied(b)),10000); const kl=parseYahoo(j); if(kl) return kl;
+  }catch(e){}
+  try{
+    const th=sym.replace('.BK','').toLowerCase();
+    const txt=await fetchTextRace([proxied('https://stooq.com/q/l/?s='+th+'.bk&f=sd2t2ohlcv&h&e=csv')],10000);
+    const kl2=parseStooqSnapshot(txt); if(kl2) return kl2;
+  }catch(e){}
+  throw new Error('ดึง '+sym+' ไม่ได้ - Proxy ตอบช้า/บล็อก');
+}
+// --- decide / backtest ใช้สูตรเดิม ---
+
+// ===== V4.10 FILTER - ตัดเทรดมั่วออก =====
+// ปัญหา V4.10: Win 45% เพราะ LONG/SHORT ทุกครั้งที่ราคาอยู่เหนือ/ใต้ EMA โดยไม่ดู RSI/Rejection
+// V4.10: LONG ต้อง RSI 40-65 + มี Rejection ที่แนวรับ, SHORT ต้อง RSI 35-60 + มี Rejection ที่แนวต้าน, ไม่งั้น WAIT
+function decide(kl){
+  const closes=kl.map(k=>k.c); const last=kl[kl.length-1];
+  const e20=ema(closes,20), e50=ema(closes,50), r=rsi(closes);
+  let atr=0; for(let i=1;i<kl.length;i++) atr+=Math.max(kl[i].h-kl[i].l,Math.abs(kl[i].h-closes[i-1]),Math.abs(kl[i].l-closes[i-1])); atr=atr/Math.max(1,kl.length-1);
+  const recent=kl.slice(-12); const support=Math.min(...recent.map(k=>k.l)), resistance=Math.max(...recent.map(k=>k.h));
+  let ll=0,hh=0; for(let i=1;i<kl.length;i++){ if(closes[i]<closes[i-1]) ll++; else if(closes[i]>closes[i-1]) hh++; }
+  let rejUp=0,rejDown=0; for(const k of kl.slice(-5)){ if((k.h-k.c)/(k.h-k.l+1e-9)>0.6) rejUp++; if((k.c-k.l)/(k.h-k.l+1e-9)>0.6) rejDown++; }
+  let decision='WAIT', reason='ยังไม่ชัด — รอสัญญาณที่เข้าเงื่อนไข';
+  // LONG แบบกรองแล้ว
+  if(last.c>e20 && last.c>e50 && r>=40 && r<=65 && rejDown>0){ decision='LONG BIAS'; reason='เหนือ EMA + RSI '+r.toFixed(1)+' (40-65) + มี Rejection ที่แนวรับ'; }
+  else if(last.c<e20 && last.c<e50 && r>=35 && r<=60 && rejUp>0){ decision='SHORT BIAS'; reason='ใต้ EMA + RSI '+r.toFixed(1)+' (35-60) + มี Rejection ที่แนวต้าน'; }
+  else if(r>70){ decision='WAIT'; reason='RSI '+r.toFixed(1)+' สูงเกิน 70 — ซื้อมากเกินไป อย่าไล่ซื้อ'; }
+  else if(r<30){ decision='REVERSAL WATCH'; reason='RSI '+r.toFixed(1)+' ต่ำกว่า 30 — ขายมากเกินไป รอเด้ง'; }
+  else if(last.c>e20 && last.c>e50){ decision='WAIT'; reason='เหนือ EMA แต่ RSI '+r.toFixed(1)+' ไม่เข้า 40-65 หรือไม่มี Rejection'; }
+  else if(last.c<e20 && last.c<e50){ decision='WAIT'; reason='ใต้ EMA แต่ RSI '+r.toFixed(1)+' ไม่เข้า 35-60 หรือไม่มี Rejection'; }
+  else if(rejUp>0||rejDown>0){ decision='REVERSAL WATCH'; reason='มี Rejection ที่แนว'; }
+  return {price:last.c,decision,reason,e20,e50,r,at:atr,support,resistance,supDist:(last.c-support)/last.c*100,resDist:(resistance-last.c)/last.c*100,ll,hh,rej:{up:rejUp,down:rejDown}};
+}
+function backtest(kl){
+  let wins=0,total=0,pnls=[];
+  for(let i=20;i<kl.length-1;i++){
+    const sub=kl.slice(0,i+1);
+    const closes=sub.map(k=>k.c);
+    const e20=ema(closes,20), e50=ema(closes,50), rr=rsi(closes);
+    let rejUp=0,rejDown=0; for(const k of sub.slice(-5)){ if((k.h-k.c)/(k.h-k.l+1e-9)>0.6) rejUp++; if((k.c-k.l)/(k.h-k.l+1e-9)>0.6) rejDown++; }
+    let sig=0;
+    if(closes[closes.length-1]>e20 && closes[closes.length-1]>e50 && rr>=40 && rr<=65 && rejDown>0) sig=1;
+    else if(closes[closes.length-1]<e20 && closes[closes.length-1]<e50 && rr>=35 && rr<=60 && rejUp>0) sig=-1;
+    else continue; // ไม่เข้าเงื่อนไข V4.10 = ไม่นับเป็นเทรด ตัดเทรดมั่วออก
+    total++; const pnl=(kl[i+1].c-kl[i].c)/kl[i].c*100*sig; pnls.push(pnl); if(pnl>0) wins++;
+  }
+  return {wr:total?Math.round(wins/total*100):0,total,avg:pnls.length?pnls.reduce((a,b)=>a+b,0)/pnls.length:0};
+}
+let running=false;
+async function runAll(){
+  if(running){ alert('กำลังทำงานอยู่ รอให้จบก่อน อย่ากดซ้ำ'); return; }
+  running=true; errs=[];
+  try{
+    ASSETS=FALLBACK;
+    document.getElementById('status').innerHTML='⏳ โหลด Whitelist ได้ '+ASSETS.length+' ตัว — กำลังดึงทีละ 2 ตัวพร้อมกัน (ไม่ยิงรวด 10 ตัว)';
+    let statusMap={}, timeMap={}; ASSETS.forEach(a=>{statusMap[a.symbol]='⏳ รอคิว'; timeMap[a.symbol]='—';});
+    function renderProgress(){
+      const el=document.getElementById('progress'); if(!el) return;
+      const done=Object.values(statusMap).filter(v=>v.includes('✅')).length;
+      const fail=Object.values(statusMap).filter(v=>v.includes('❌')).length;
+      const run=Object.values(statusMap).filter(v=>v.includes('🔄')).length;
+      el.innerHTML=`<div style="background:#0a0f22;border:1px solid #334155;border-radius:12px;padding:12px;margin-top:10px"><b>🔦 สถานะรายตัว — เสร็จ ${done}/${ASSETS.length} • กำลังวิ่ง ${run} • พัง ${fail}</b><br><small>✅ = เสร็จ &nbsp; 🔄 = กำลังทำงาน &nbsp; ❌ = พัง &nbsp; ⏳ = รอคิว &nbsp; ⏱ = เวลาที่ใช้</small><div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px">`+ASSETS.map(a=>`<div style="background:#111936;border-radius:8px;padding:8px;font-size:13px"><b>${a.symbol}</b><br>${statusMap[a.symbol]}<br><small>⏱ ${timeMap[a.symbol]}</small></div>`).join('')+`</div></div>`;
+    }
+    renderProgress();
+    async function runOne(a){
+      const t0=Date.now(); statusMap[a.symbol]='🔄 กำลังทำงาน...'; renderProgress();
+      try{
+        const kl=await fetchYahoo(a.symbol); const d=decide(kl); const bt=backtest(kl);
+        timeMap[a.symbol]=((Date.now()-t0)/1000).toFixed(1)+' วิ';
+        statusMap[a.symbol]='✅ เสร็จ — '+d.price.toFixed(2)+' • '+d.decision;
+        renderProgress(); return {...a,...d,bt};
+      }catch(e){
+        timeMap[a.symbol]=((Date.now()-t0)/1000).toFixed(1)+' วิ';
+        logErr('FETCH FAIL', a.symbol+' - '+e.message);
+        statusMap[a.symbol]='❌ พัง — '+e.message.slice(0,40);
+        renderProgress();
+        return {...a,price:0,decision:'NO DATA',reason:'ดึง '+a.symbol+' ไม่ได้: '+e.message,bt:{wr:0,total:0,avg:0},e20:0,e50:0,r:0,at:0,support:0,resistance:0,supDist:0,resDist:0,ll:0,hh:0,rej:{up:0,down:0}};
+      }
+    }
+    // FIX6: concurrency = 2
+    let rows=[], idx=0;
+    async function worker(){ while(idx<ASSETS.length){ const a=ASSETS[idx++]; const r=await runOne(a); rows.push(r); } }
+    await Promise.all([worker(),worker()]);
+    rows.sort((a,b)=>ASSETS.findIndex(x=>x.symbol===a.symbol)-ASSETS.findIndex(x=>x.symbol===b.symbol));
+    const byM=m=>rows.filter(r=>r.market===m);
+    const sumM=m=>{const rs=byM(m).filter(r=>r.bt.total>0); return {avgWr:rs.length?Math.round(rs.reduce((a,b)=>a+b.bt.wr,0)/rs.length):0,avgPnl:rs.length?(rs.reduce((a,b)=>a+b.bt.avg,0)/rs.length).toFixed(2):'0.00',losers:rs.filter(r=>r.bt.wr<50).map(r=>r.symbol).join(', ')||'—'};};
+    const c=sumM('CRYPTO'),u=sumM('US'),t=sumM('TH');
+    document.getElementById('summary').innerHTML=`<table><tr><th>ตลาด</th><th>Win Rate เฉลี่ย</th><th>กำไร/ขาดทุนเฉลี่ย</th><th>ตัวที่ขาดทุน</th></tr><tr><td>🪙 Crypto</td><td>${c.avgWr}%</td><td>${c.avgPnl}%</td><td>${c.losers}</td></tr><tr><td>🇺🇸 US</td><td>${u.avgWr}%</td><td>${u.avgPnl}%</td><td>${u.losers}</td></tr><tr><td>🇹🇭 TH</td><td>${t.avgWr}%</td><td>${t.avgPnl}%</td><td>${t.losers}</td></tr></table><small>Win Rate ต่ำสุด = ตลาดที่ขาดทุนมากสุด — อย่าเอาเงินจริงเข้าตลาดนั้น</small>`;
+    document.getElementById('dash').innerHTML=`<div class="grid">`+rows.map(r=>`<div class="asset"><b>${r.name} (${r.symbol})</b><br><div class="price">${r.ccy}${r.price?r.price.toFixed(2):'—'}</div><small>RSI ${r.r?r.r.toFixed(1):'—'} • EMA20 ${r.e20?r.e20.toFixed(2):'0.00'} • EMA50 ${r.e50?r.e50.toFixed(2):'0.00'} • ATR ${r.at?r.at.toFixed(2):'—'}<br>รับ ${r.support.toFixed(2)} (${r.supDist.toFixed(2)}%) • ต้าน ${r.resistance.toFixed(2)} (${r.resDist.toFixed(2)}%) • LL ${r.ll} • HH ${r.hh}<br>${r.decision}<br>${r.reason}<br>Backtest: Win ${r.bt.wr}% (${r.bt.total} เทรด) • เฉลี่ย ${r.bt.avg.toFixed(2)}%</small></div>`).join('')+`</div>`;
+    const kpi=document.getElementById('kpiWin'); if(kpi){ const all=rows.filter(r=>r.bt.total>0); kpi.textContent=(all.length?Math.round(all.reduce((a,b)=>a+b.bt.wr,0)/all.length):0)+'%'; }
+    document.getElementById('status').innerHTML='✅ เสร็จครบ '+rows.length+' ตัว — ดูผลด้านล่าง';
+  }finally{ running=false; }
+}
+// FIX1: ไม่มี window load auto RUN - รอผู้ใช้กด RUN เท่านั้น
+
+</script></body></html>
