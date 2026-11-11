@@ -1,4 +1,4 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SIGNAL BOSS V4.6 — Modern</title><style>
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SIGNAL BOSS V4.7 — Modern</title><style>
 *{box-sizing:border-box}body{margin:0;background:#070a12;color:#eef2ff;font-family:system-ui,-apple-system,sans-serif}
 .top{max-width:1200px;margin:auto;padding:20px 16px 8px;display:flex;justify-content:space-between;align-items:center}
 .logo{font-size:22px;font-weight:900;letter-spacing:-.5px} .logo span{color:#fbbf24}
@@ -21,7 +21,7 @@ details{background:#0a0f22;border:1px solid #263554;border-radius:14px;padding:1
 .btnG{background:#1e293b;color:#fff;border:0;padding:9px 14px;border-radius:10px;font-weight:700;cursor:pointer}
 #errBox div{border:1px solid #3f1d1d;border-radius:10px;padding:8px;margin-top:6px;font-size:12px}
 </style></head><body>
-<div class="top"><div class="logo">SIGNAL BOSS <span>V4.6</span></div><div class="badge">● PAPER TEST</div></div>
+<div class="top"><div class="logo">SIGNAL BOSS <span>V4.7</span></div><div class="badge">● PAPER TEST</div></div>
 <div class="wrap">
 <div class="hero"><h2>ทดสอบกลยุทธ์เดียวกัน 3 ตลาด</h2><p>Crypto • หุ้น US • หุ้นไทย SET — ไม่ส่งคำสั่งจริง • ไม่ใช้เงินจริง</p><button class="btn" onclick="runAll()">▶ RUN — ทดสอบ 3 ตลาด</button><div id="status" style="margin-top:12px;font-size:13px;color:#cbd5e1"></div><div id="progress"></div></div>
 <div class="kpi"><div><span>ภาพรวม</span><br><b id="kpiWin">—</b><br><span>Win Rate เฉลี่ย</span></div><div><span>ตลาด</span><br><b>3</b><br><span>Crypto / US / TH</span></div><div><span>หุ้น</span><br><b>10</b><br><span>ตัวที่ทดสอบ</span></div></div>
@@ -194,5 +194,72 @@ window.addEventListener('load',runAll);
 <script>
 // อัปเดต KPI จาก summary หลัง RUN
 const _oldRun = runAll;
+
+// ===== V4.7 FETCH FIX - ทำไม BTC ได้ตัวเดียว =====
+// BTC ได้ เพราะใช้ Binance ตรงๆ ไม่ติด CORS
+// หุ้น US/ไทย พัง เพราะใช้ Yahoo อย่างเดียว โดนบล็อก CORS บนมือถือ/Vercel
+// แก้: US ใช้ Nasdaq + Stooq ก่อน, ไทยใช้ Yahoo ผ่าน Proxy 4 ตัว + Stooq
+async function fetchYahooV47(sym){
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  async function fetchJSON(url, ms=7000){
+    const c=new AbortController(); const t=setTimeout(()=>c.abort(),ms);
+    try{ const r=await fetch(url,{signal:c.signal}); clearTimeout(t); if(!r.ok) throw new Error('HTTP '+r.status); return await r.json(); }
+    catch(e){ clearTimeout(t); throw e; }
+  }
+  async function fetchText(url, ms=7000){
+    const c=new AbortController(); const t=setTimeout(()=>c.abort(),ms);
+    try{ const r=await fetch(url,{signal:c.signal}); clearTimeout(t); if(!r.ok) throw new Error('HTTP '+r.status); return await r.text(); }
+    catch(e){ clearTimeout(t); throw e; }
+  }
+  const proxies=[u=>u, u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u), u=>'https://corsproxy.io/?url='+encodeURIComponent(u), u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u)];
+  // 1) BTC - Binance ตรง (ทางเดิมที่ได้ผล)
+  if(sym==='BTC-USD'||sym==='BTCUSDT'){
+    try{ const j=await fetchJSON('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=180'); return j.map(k=>({t:k[0],o:parseFloat(k[1]),h:parseFloat(k[2]),l:parseFloat(k[3]),c:parseFloat(k[4])})); }catch(e){}
+    try{ const j=await fetchJSON('https://api.binance.us/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=180'); return j.map(k=>({t:k[0],o:parseFloat(k[1]),h:parseFloat(k[2]),l:parseFloat(k[3]),c:parseFloat(k[4])})); }catch(e){}
+  }
+  // 2) หุ้น US - Nasdaq API ตรง (ไม่ผ่าน Yahoo)
+  const usMap={AAPL:'AAPL',MSFT:'MSFT',NVDA:'NVDA',TSLA:'TSLA'};
+  if(usMap[sym]){
+    try{
+      const j=await fetchJSON('https://api.nasdaq.com/api/quote/'+sym+'/historical?assetclass=stocks&fromdate=2025-06-01&limit=9999',8000);
+      const trades=j?.data?.trades?.table?.rows||[];
+      if(trades.length>20) return trades.map(r=>{const p=parseFloat(String(r.close).replace(/[$,]/g,'')); return {t:new Date(r.date).getTime(),o:p,h:p,l:p,c:p};}).sort((a,b)=>a.t-b.t);
+    }catch(e){}
+    // Stooq US - ผ่าน Proxy
+    for(const px of proxies){
+      try{
+        const txt=await fetchText(px('https://stooq.com/q/d/l/?s='+sym.toLowerCase()+'.us&i=d'));
+        const lines=txt.trim().split('\n').slice(1).map(l=>{const [d,o,h,l2,c]=l.split(','); return {t:new Date(d).getTime(),o:+o,h:+h,l:+l2,c:+c};}).filter(x=>x.c>0);
+        if(lines.length>20) return lines;
+      }catch(e){}
+    }
+  }
+  // 3) หุ้นไทย - Yahoo ผ่าน Proxy 4 ตัว (ลองทุกตัว ไม่ใช่ตัวเดียว)
+  const yahoo='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=6mo&interval=1d';
+  const yahoo2='https://query2.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?range=6mo&interval=1d';
+  for(const base of [yahoo, yahoo2]){
+    for(const px of proxies){
+      try{
+        const j=await fetchJSON(px(base));
+        const res=j.chart?.result?.[0]; if(!res) continue;
+        const q=res.indicators?.quote?.[0]; const ts=res.timestamp||[];
+        const kl=ts.map((t,i)=>({t:t*1000,o:q.open[i],h:q.high[i],l:q.low[i],c:q.close[i]})).filter(x=>x.c!=null);
+        if(kl.length>20) return kl;
+      }catch(e){ await sleep(300); }
+    }
+  }
+  // 4) สุดท้าย - Stooq ไทย .BK
+  const th=sym.replace('.BK','').toLowerCase();
+  for(const px of proxies){
+    try{
+      const txt=await fetchText(px('https://stooq.com/q/d/l/?s='+th+'.bk&i=d'));
+      const lines=txt.trim().split('\n').slice(1).map(l=>{const [d,o,h,l2,c]=l.split(','); return {t:new Date(d).getTime(),o:+o,h:+h,l:+l2,c:+c};}).filter(x=>x.c>0);
+      if(lines.length>20) return lines;
+    }catch(e){}
+  }
+  throw new Error('ดึง '+sym+' ไม่ได้ - ลองรอ 1 นาทีแล้วกด RUN ใหม่อีกรอบ อย่ากดซ้ำ');
+}
+// แทนที่ฟังก์ชันเดิมด้วยตัวใหม่
+fetchYahoo = fetchYahooV47;
 </script>
 </body></html>
